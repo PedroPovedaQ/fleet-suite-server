@@ -1,0 +1,292 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id                     Int     @id @default(autoincrement())
+  name                   String  @db.VarChar
+  type                   String  @db.VarChar
+  expires                Boolean @default(false)
+  warning_advisory_days  Int     @default(30)
+  critical_advisory_days Int     @default(7)
+  files                  File[]
+
+  @@unique([name, type], name: "Category_name_type_key")
+  @@index(type)
+}
+
+model File {
+  id            Int       @id @default(autoincrement())
+  url           String    @db.VarChar
+  key           String    @db.VarChar
+  name          String    @db.VarChar
+  description   String?   @db.VarChar
+  truckId       Int?
+  driverId      Int?
+  loadId        Int?
+  created       DateTime  @default(now()) @db.Timestamp(6)
+  updated       DateTime  @updatedAt
+  expiration    DateTime?
+  categoryId    Int?
+  trailerId     Int?
+  file_category Category? @relation(fields: [categoryId], references: [id])
+  driver        Driver?   @relation(fields: [driverId], references: [id])
+  trailer       Trailer?  @relation(fields: [trailerId], references: [id])
+  truck         Truck?    @relation(fields: [truckId], references: [id])
+  load          Load?     @relation(fields: [loadId], references: [id])
+}
+
+// model Expense {
+//   id          Int      @id @default(autoincrement())
+//   created     DateTime @default(now()) @db.Timestamp(6)
+//   price       Decimal  @db.Money
+//   title       String   @db.VarChar
+//   description String   @db.VarChar
+//   truckId     Int?
+//   trailerId   Int?
+//   trailer     Trailer? @relation(fields: [trailerId], references: [id])
+//   truck       Truck?   @relation(fields: [truckId], references: [id])
+// }
+
+model Comment {
+  id        Int        @id @default(autoincrement())
+  created   DateTime   @default(now()) @db.Timestamp(6)
+  userId    Int
+  driverId  Int?
+  truckId   Int?
+  text      String     @db.VarChar
+  trailerId Int?
+  loadId    Int?
+  brokerId  Int?
+  driver    Driver?    @relation(fields: [driverId], references: [id])
+  load      Load?      @relation(fields: [loadId], references: [id])
+  trailer   Trailer?   @relation(fields: [trailerId], references: [id])
+  truck     Truck?     @relation(fields: [truckId], references: [id])
+  brokerage Brokerage? @relation(fields: [brokerId], references: [id])
+  user      User       @relation(fields: [userId], references: [id])
+}
+
+model Driver {
+  id               Int       @id @default(autoincrement())
+  created          DateTime  @default(now()) @db.Timestamp(6)
+  updated          DateTime  @updatedAt
+  first_name       String    @db.VarChar
+  last_name        String    @db.VarChar
+  cdl_number       String    @unique @db.VarChar
+  cdl_state        String    @db.VarChar
+  price_per_mile   Int       @default(0)
+  experience_years Int       @db.SmallInt
+  phone            String    @db.VarChar
+  email            String    @unique @db.VarChar
+  middle_name      String    @db.VarChar
+  status           Status    @default(GREEN)
+  comments         Comment[]
+  files            File[]
+  truck            Truck?    @relation(fields: [truckId], references: [id])
+  truckId          Int?
+}
+
+model Truck {
+  id                  Int       @id @default(autoincrement())
+  created             DateTime  @default(now()) @db.Timestamp(6)
+  updated             DateTime  @updatedAt
+  owned_by_company    Boolean   @default(false)
+  year                Int       @db.SmallInt
+  make                String    @db.VarChar
+  model               String    @db.VarChar
+  color               String    @db.VarChar
+  owner_name          String    @db.VarChar
+  owner_phone         String    @db.VarChar
+  owner_email         String    @db.VarChar
+  unit_number         String    @unique @db.VarChar
+  registration_number String    @db.VarChar
+  vin_number          String    @unique @db.VarChar
+  status              String    @default("active") @db.VarChar
+  miles               Int?      @default(0)
+  license_plate       String    @db.VarChar
+  location            Location?
+  drivers             Driver[]
+  comments            Comment[]
+  // expenses            Expense[]
+  files               File[]
+  loads               Load[]
+  trailer             Trailer?  @relation(fields: [trailerId], references: [id])
+  trailerId           Int?      @unique
+  dispatcherId        Int?
+  dispatcher          User?     @relation(fields: [dispatcherId], references: [id])
+  // @@unique([id, trailerId], map: "truck_on_trailer")
+  // @@index([id, trailerId])
+}
+
+model Trailer {
+  id                  Int       @id @default(autoincrement())
+  created             DateTime  @default(now()) @db.Timestamp(6)
+  updated             DateTime  @updatedAt
+  type                String    @default("reefer") @db.VarChar //REEFER/Van/Flatbed
+  year                Int       @db.SmallInt
+  make                String    @db.VarChar
+  model               String    @db.VarChar
+  unit_number         String    @db.VarChar
+  vin_number          String    @unique @db.VarChar
+  registration_number String    @db.VarChar
+  owner_name          String    @db.VarChar
+  owner_phone         String    @db.VarChar
+  owner_email         String    @db.VarChar
+  license_plate       String    @db.VarChar //@TODO: mb delete
+  ventilated          Boolean   @default(false)
+  size                String    @default("58") @db.VarChar //48/53
+  comments            Comment[]
+  files               File[]
+  truck               Truck?
+  // Expense             Expense[]
+}
+
+model User {
+  id       Int       @id @default(autoincrement())
+  created  DateTime  @default(now()) @db.Timestamp(6)
+  updated  DateTime  @updatedAt
+  name     String    @db.VarChar
+  email    String    @unique @db.VarChar
+  password String    @db.VarChar
+  avatar   String?   @db.VarChar
+  roles    String[]  @db.VarChar
+  comments Comment[]
+  trucks   Truck[]
+}
+
+model Location {
+  id        Int     @id @default(autoincrement())
+  name      String? @db.VarChar
+  address   String? @db.VarChar
+  latitude  String? @db.VarChar
+  longitude String? @db.VarChar
+  truck     Truck   @relation(fields: [truckId], references: [id])
+  truckId   Int     @unique // relation scalar field (used in the `@relation` attribute above)
+}
+
+model Load {
+  id                 Int           @id @default(autoincrement())
+  createdAt          DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt          DateTime      @updatedAt
+  status             LoadStatus    @default(SAVED)
+  deadhead_location  Json? // {name? address? latitude, longitude}
+  origin             String        @db.VarChar
+  destination        String        @db.VarChar
+  vendor_rate        Decimal?      @default(0.0) @db.Decimal
+  offer              Decimal?      @default(0.0) @db.Decimal
+  agreed             Decimal?      @default(0.0) @db.Decimal
+  date_start         DateTime?
+  date_end           DateTime?
+  load_number        String?
+  weight             String?
+  commodity          String?
+  deadhead_miles     Int?          @db.SmallInt
+  loaded_miles       Int?          @db.SmallInt
+  total_miles        Int?          @db.SmallInt
+  travel_duration    Int?          @db.Integer //seconds
+  price_per_mile     Int?          @db.Integer //dollars
+  truckId            Int?
+  truck              Truck?        @relation(fields: [truckId], references: [id])
+  comments           Comment[]
+  route              Json? //Array of Json Objects [{name? address? latitude, longitude}]
+  brokerId           Int?
+  brokerage          Brokerage?    @relation(fields: [brokerId], references: [id])
+  brokerageRepId     Int?
+  brokerageRep       BrokerageRep? @relation(fields: [brokerageRepId], references: [id])
+  agent_name         String?       @db.VarChar
+  agent_phone_number String?       @db.VarChar
+  files              File[]
+}
+
+// model Log {
+//   id          Int      @id @default(autoincrement())
+//   created     DateTime @default(now()) @db.Timestamp(6)
+//   updated     DateTime @updatedAt
+//   description String
+//   userId      Int?
+//   loadId      Int?
+//   trailerId   Int?
+//   truckId     Int?
+//   driverId    Int?
+//   driver      Driver?  @relation(fields: [driverId], references: [id])
+//   load        Load?    @relation(fields: [loadId], references: [id])
+//   trailer     Trailer? @relation(fields: [trailerId], references: [id])
+//   truck       Truck?   @relation(fields: [truckId], references: [id])
+//   user        User?    @relation(fields: [userId], references: [id])
+// }
+
+model Brokerage {
+  id                    Int            @id @default(autoincrement())
+  created               DateTime       @default(now()) @db.Timestamp(6)
+  updated               DateTime       @updatedAt
+  status                BrokerStatus   @default(ACTIVE)
+  mc_number             String         @unique
+  name                  String?        @db.VarChar
+  mailing_address       String?        @db.VarChar
+  city                  String?        @db.VarChar
+  state                 String?        @db.VarChar
+  zip                   String?        @db.VarChar
+  phone                 String?        @db.VarChar
+  fax_number            String?        @db.VarChar
+  email                 String?        @db.VarChar
+  tax_id                String?        @db.VarChar
+  flag                  Boolean?       @default(false)
+  flag_reason           String?        @db.VarChar
+  remit                 Boolean?       @default(false)
+  remit_name            String?        @db.VarChar
+  remit_mailing_address String?        @db.VarChar
+  remit_city            String?        @db.VarChar
+  remit_state           String?        @db.VarChar
+  remit_zip             String?        @db.VarChar
+  remit_phone           String?        @db.VarChar
+  loads                 Load[]
+  comments              Comment[]
+  agents                BrokerageRep[]
+}
+
+model BrokerageRep {
+  id          Int        @id @default(autoincrement())
+  created     DateTime   @default(now()) @db.Timestamp(6)
+  updated     DateTime   @updatedAt
+  name        String     @db.VarChar
+  email       String?    @db.VarChar
+  phone_ext   String?    @db.VarChar
+  phone_other String?    @db.VarChar
+  phone_cell  String?    @db.VarChar
+  fax_number  String?    @db.VarChar
+  hours       String?    @db.VarChar
+  broker      Brokerage? @relation(fields: [brokerId], references: [id])
+  brokerId    Int?
+  loads       Load[]
+}
+
+enum BrokerStatus {
+  ACTIVE //GREEN
+  DO_NOT_USE //RED
+  HOLD
+}
+
+enum Status {
+  GREEN
+  RED
+}
+
+enum LoadStatus {
+  PENDING
+  ACTIVE
+  FULFILLED
+  CANCELLED
+  DELAYED
+  SAVED
+  TONU //the next day it would go imto ready for billimg // WHEN T HEY ORDER YOUR TRUCK AND THEN CANCEL IT // DO NOT ADD TO DRIVERS WEEKLY MILES TOTAL// BUT YES TO WEEKLY GROSS
+  //@TODO: add ARCHIVED
+  //@TODO: ADD DRIVER CANCELLED
+}
+
+// @TODO: Meeting for reporting.

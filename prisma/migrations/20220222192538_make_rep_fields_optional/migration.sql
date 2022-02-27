@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "BrokerageRep" ALTER COLUMN "email" DROP NOT NULL,
+ALTER COLUMN "phone_ext" DROP NOT NULL,
+ALTER COLUMN "fax_number" DROP NOT NULL,
+ALTER COLUMN "phone_cell" DROP NOT NULL,
+ALTER COLUMN "phone_other" DROP NOT NULL,
+ALTER COLUMN "hours" DROP NOT NULL;
